@@ -26,7 +26,7 @@ type CouponsAPIService service
 type ApiArchiveCouponRequest struct {
 	ctx context.Context
 	ApiService *CouponsAPIService
-	code string
+	coupon string
 	idempotencyKey *string
 }
 
@@ -48,14 +48,14 @@ The code stops redeeming. Subscriptions that already carry it keep their discoun
 
 
  @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
- @param code The coupon's code (the promo code), case-insensitive, or the coupon's public id (`cpn_…`).
+ @param coupon The coupon's public id (`cpn_…`) or its code (the promo code), case-insensitive.
  @return ApiArchiveCouponRequest
 */
-func (a *CouponsAPIService) ArchiveCoupon(ctx context.Context, code string) ApiArchiveCouponRequest {
+func (a *CouponsAPIService) ArchiveCoupon(ctx context.Context, coupon string) ApiArchiveCouponRequest {
 	return ApiArchiveCouponRequest{
 		ApiService: a,
 		ctx: ctx,
-		code: code,
+		coupon: coupon,
 	}
 }
 
@@ -74,8 +74,8 @@ func (a *CouponsAPIService) ArchiveCouponExecute(r ApiArchiveCouponRequest) (*Co
 		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/coupons/{code}/archive"
-	localVarPath = strings.Replace(localVarPath, "{"+"code"+"}", url.PathEscape(parameterValueToString(r.code, "code")), -1)
+	localVarPath := localBasePath + "/coupons/{coupon}/archive"
+	localVarPath = strings.Replace(localVarPath, "{"+"coupon"+"}", url.PathEscape(parameterValueToString(r.coupon, "coupon")), -1)
 
 	localVarHeaderParams := make(map[string]string)
 	localVarQueryParams := url.Values{}
@@ -397,7 +397,7 @@ func (a *CouponsAPIService) CreateCouponExecute(r ApiCreateCouponRequest) (*Coup
 type ApiDeleteCouponRequest struct {
 	ctx context.Context
 	ApiService *CouponsAPIService
-	code string
+	coupon string
 	idempotencyKey *string
 }
 
@@ -420,14 +420,14 @@ orphaned. Archive it instead. **Operator token only**, not bound to a product.
 
 
  @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
- @param code The coupon's code (the promo code), case-insensitive, or the coupon's public id (`cpn_…`).
+ @param coupon The coupon's public id (`cpn_…`) or its code (the promo code), case-insensitive.
  @return ApiDeleteCouponRequest
 */
-func (a *CouponsAPIService) DeleteCoupon(ctx context.Context, code string) ApiDeleteCouponRequest {
+func (a *CouponsAPIService) DeleteCoupon(ctx context.Context, coupon string) ApiDeleteCouponRequest {
 	return ApiDeleteCouponRequest{
 		ApiService: a,
 		ctx: ctx,
-		code: code,
+		coupon: coupon,
 	}
 }
 
@@ -446,8 +446,8 @@ func (a *CouponsAPIService) DeleteCouponExecute(r ApiDeleteCouponRequest) (*Coup
 		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/coupons/{code}"
-	localVarPath = strings.Replace(localVarPath, "{"+"code"+"}", url.PathEscape(parameterValueToString(r.code, "code")), -1)
+	localVarPath := localBasePath + "/coupons/{coupon}"
+	localVarPath = strings.Replace(localVarPath, "{"+"coupon"+"}", url.PathEscape(parameterValueToString(r.coupon, "coupon")), -1)
 
 	localVarHeaderParams := make(map[string]string)
 	localVarQueryParams := url.Values{}
@@ -567,7 +567,7 @@ func (a *CouponsAPIService) DeleteCouponExecute(r ApiDeleteCouponRequest) (*Coup
 type ApiGetCouponRequest struct {
 	ctx context.Context
 	ApiService *CouponsAPIService
-	code string
+	coupon string
 }
 
 func (r ApiGetCouponRequest) Execute() (*CouponDefinitionDetail, *http.Response, error) {
@@ -584,14 +584,14 @@ environment or another tenant.
 
 
  @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
- @param code The coupon's code (the promo code), case-insensitive, or the coupon's public id (`cpn_…`).
+ @param coupon The coupon's public id (`cpn_…`) or its code (the promo code), case-insensitive.
  @return ApiGetCouponRequest
 */
-func (a *CouponsAPIService) GetCoupon(ctx context.Context, code string) ApiGetCouponRequest {
+func (a *CouponsAPIService) GetCoupon(ctx context.Context, coupon string) ApiGetCouponRequest {
 	return ApiGetCouponRequest{
 		ApiService: a,
 		ctx: ctx,
-		code: code,
+		coupon: coupon,
 	}
 }
 
@@ -610,8 +610,8 @@ func (a *CouponsAPIService) GetCouponExecute(r ApiGetCouponRequest) (*CouponDefi
 		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/coupons/{code}"
-	localVarPath = strings.Replace(localVarPath, "{"+"code"+"}", url.PathEscape(parameterValueToString(r.code, "code")), -1)
+	localVarPath := localBasePath + "/coupons/{coupon}"
+	localVarPath = strings.Replace(localVarPath, "{"+"coupon"+"}", url.PathEscape(parameterValueToString(r.coupon, "coupon")), -1)
 
 	localVarHeaderParams := make(map[string]string)
 	localVarQueryParams := url.Values{}
@@ -887,7 +887,7 @@ func (a *CouponsAPIService) ListCouponsExecute(r ApiListCouponsRequest) (*Coupon
 type ApiUnarchiveCouponRequest struct {
 	ctx context.Context
 	ApiService *CouponsAPIService
-	code string
+	coupon string
 	idempotencyKey *string
 }
 
@@ -907,14 +907,14 @@ UnarchiveCoupon Reinstate an archived coupon
 The code redeems again. **Operator token only**, not bound to a product.
 
  @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
- @param code The coupon's code (the promo code), case-insensitive, or the coupon's public id (`cpn_…`).
+ @param coupon The coupon's public id (`cpn_…`) or its code (the promo code), case-insensitive.
  @return ApiUnarchiveCouponRequest
 */
-func (a *CouponsAPIService) UnarchiveCoupon(ctx context.Context, code string) ApiUnarchiveCouponRequest {
+func (a *CouponsAPIService) UnarchiveCoupon(ctx context.Context, coupon string) ApiUnarchiveCouponRequest {
 	return ApiUnarchiveCouponRequest{
 		ApiService: a,
 		ctx: ctx,
-		code: code,
+		coupon: coupon,
 	}
 }
 
@@ -933,8 +933,8 @@ func (a *CouponsAPIService) UnarchiveCouponExecute(r ApiUnarchiveCouponRequest) 
 		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/coupons/{code}/unarchive"
-	localVarPath = strings.Replace(localVarPath, "{"+"code"+"}", url.PathEscape(parameterValueToString(r.code, "code")), -1)
+	localVarPath := localBasePath + "/coupons/{coupon}/unarchive"
+	localVarPath = strings.Replace(localVarPath, "{"+"coupon"+"}", url.PathEscape(parameterValueToString(r.coupon, "coupon")), -1)
 
 	localVarHeaderParams := make(map[string]string)
 	localVarQueryParams := url.Values{}
@@ -1054,7 +1054,7 @@ func (a *CouponsAPIService) UnarchiveCouponExecute(r ApiUnarchiveCouponRequest) 
 type ApiUpdateCouponRequest struct {
 	ctx context.Context
 	ApiService *CouponsAPIService
-	code string
+	coupon string
 	couponRequest *CouponRequest
 	idempotencyKey *string
 }
@@ -1085,14 +1085,14 @@ a product. Send an `Idempotency-Key` to make a retry safe.
 
 
  @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
- @param code The coupon's code (the promo code), case-insensitive, or the coupon's public id (`cpn_…`).
+ @param coupon The coupon's public id (`cpn_…`) or its code (the promo code), case-insensitive.
  @return ApiUpdateCouponRequest
 */
-func (a *CouponsAPIService) UpdateCoupon(ctx context.Context, code string) ApiUpdateCouponRequest {
+func (a *CouponsAPIService) UpdateCoupon(ctx context.Context, coupon string) ApiUpdateCouponRequest {
 	return ApiUpdateCouponRequest{
 		ApiService: a,
 		ctx: ctx,
-		code: code,
+		coupon: coupon,
 	}
 }
 
@@ -1111,8 +1111,8 @@ func (a *CouponsAPIService) UpdateCouponExecute(r ApiUpdateCouponRequest) (*Coup
 		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/coupons/{code}"
-	localVarPath = strings.Replace(localVarPath, "{"+"code"+"}", url.PathEscape(parameterValueToString(r.code, "code")), -1)
+	localVarPath := localBasePath + "/coupons/{coupon}"
+	localVarPath = strings.Replace(localVarPath, "{"+"coupon"+"}", url.PathEscape(parameterValueToString(r.coupon, "coupon")), -1)
 
 	localVarHeaderParams := make(map[string]string)
 	localVarQueryParams := url.Values{}

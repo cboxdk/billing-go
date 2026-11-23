@@ -10,6 +10,7 @@ api_disputes.go
 api_dunning.go
 api_enforcement.go
 api_environments.go
+api_experiments.go
 api_invoices.go
 api_licence_data.go
 api_licenses.go
@@ -21,9 +22,12 @@ api_payment_gateways.go
 api_payment_intents.go
 api_payment_methods.go
 api_plans.go
+api_pricing_tables.go
 api_product_access.go
 api_quotes.go
+api_retention.go
 api_seats.go
+api_sellers.go
 api_service_connections.go
 api_subscriptions.go
 api_tax_returns.go
@@ -187,6 +191,7 @@ model_change_subscription_dates_200_response.go
 model_change_subscription_dates_request.go
 model_charged_invoice.go
 model_check_service_admission_200_response.go
+model_checkout_link.go
 model_checkout_session_request.go
 model_checkout_session_request_items_inner.go
 model_choose_accounting_contact_import_row_200_response.go
@@ -199,6 +204,7 @@ model_commitment_refusal.go
 model_commitment_request.go
 model_commitment_response.go
 model_commitment_term.go
+model_conclude_experiment_request.go
 model_confirm_accounting_contact_import_200_response.go
 model_confirm_accounting_contact_import_request.go
 model_connect_engage_service_200_response.go
@@ -218,6 +224,7 @@ model_create_affiliate_program_request.go
 model_create_affiliate_program_request_commission.go
 model_create_affiliate_referral_request.go
 model_create_affiliate_request.go
+model_create_checkout_link_request.go
 model_create_credit_purchase_422_response.go
 model_create_customers_from_accounting_contact_import_200_response.go
 model_create_customers_from_accounting_contact_import_200_response_created_inner.go
@@ -257,11 +264,15 @@ model_credit_purchase.go
 model_credit_purchase_credit.go
 model_credit_purchase_request.go
 model_customer_contract.go
+model_customer_lifecycle_refusal.go
+model_customer_lifecycle_state.go
 model_customer_overage_cap_row.go
 model_customer_overage_cap_row_customer.go
 model_date_change_preview.go
 model_date_change_request.go
 model_delete_entitlement_override_200_response.go
+model_delete_experiment_200_response.go
+model_delete_organization_200_response.go
 model_delete_overage_cap_200_response.go
 model_delete_spend_alert_200_response.go
 model_delete_webhook_endpoint_200_response.go
@@ -300,6 +311,10 @@ model_entitlement_terms.go
 model_entitlements_response.go
 model_environment.go
 model_error_body.go
+model_experiment.go
+model_experiment_input.go
+model_experiment_input_variants_inner.go
+model_experiment_variant.go
 model_export_catalog_200_response.go
 model_extend_invoice_due_date_request.go
 model_feature.go
@@ -401,6 +416,8 @@ model_list_agreements_200_response.go
 model_list_all_invoices_400_response.go
 model_list_bank_lines_200_response.go
 model_list_bank_statements_200_response.go
+model_list_checkout_links_200_response.go
+model_list_checkout_links_200_response_data_inner.go
 model_list_connected_financial_events_200_response.go
 model_list_connected_production_environments_200_response.go
 model_list_connected_production_environments_200_response_data_inner.go
@@ -409,6 +426,7 @@ model_list_disputes_200_response.go
 model_list_download_grants_200_response.go
 model_list_entitlement_overrides_200_response.go
 model_list_environments_200_response.go
+model_list_experiments_200_response.go
 model_list_financial_events_200_response.go
 model_list_financial_events_200_response_data_inner.go
 model_list_financial_events_200_response_data_inner_data.go
@@ -424,9 +442,13 @@ model_list_organization_purchases_200_response.go
 model_list_organization_subscriptions_200_response.go
 model_list_overage_caps_200_response.go
 model_list_plan_moves_200_response.go
+model_list_pricing_tables_200_response.go
 model_list_private_plans_200_response.go
 model_list_product_files_200_response.go
+model_list_retention_offers_200_response.go
+model_list_retention_reasons_200_response.go
 model_list_scheduled_catalog_changes_200_response.go
+model_list_sellers_200_response.go
 model_list_service_directory_200_response.go
 model_list_signed_agreements_200_response.go
 model_list_spend_alerts_200_response.go
@@ -441,6 +463,8 @@ model_mark_affiliate_payout_paid_request.go
 model_mark_invoice_paid_request.go
 model_match_bank_line_request.go
 model_match_bank_line_request_allocations_inner.go
+model_merge_organization_request.go
+model_merge_organization_request_fields.go
 model_meter.go
 model_meter_detail.go
 model_meter_detail_all_of_entitlements.go
@@ -514,6 +538,8 @@ model_plane_invoice_list_all_of_data.go
 model_portal_session_request.go
 model_prepare_tax_return_200_response.go
 model_prepare_tax_return_request.go
+model_preview_organization_merge_200_response.go
+model_preview_organization_merge_request.go
 model_preview_renewal_alignment_request.go
 model_preview_service_invitation_200_response.go
 model_preview_service_invitation_200_response_invitation.go
@@ -524,6 +550,9 @@ model_preview_subscription_coupon_request.go
 model_price_lock.go
 model_price_lock_state.go
 model_price_tax.go
+model_pricing_table.go
+model_pricing_table_column.go
+model_pricing_table_input.go
 model_private_plan.go
 model_product_definition_manifest.go
 model_product_definition_manifest_features_inner.go
@@ -577,9 +606,14 @@ model_reset_environment_200_response.go
 model_reset_environment_request.go
 model_reset_period.go
 model_resource_limit.go
+model_retention_offer.go
+model_retention_offer_input.go
+model_retention_reason.go
+model_retention_reason_input.go
 model_retry_accounting_sync_202_response.go
 model_retry_invoice_dunning_request.go
 model_reverse_invoice_payment_request.go
+model_revoke_checkout_link_200_response.go
 model_revoke_limit_increase_request.go
 model_schedule_phase.go
 model_schedule_phase_request.go
@@ -600,6 +634,12 @@ model_seat_type_response.go
 model_seat_type_state.go
 model_seat_type_state_holders_inner.go
 model_seats_set_request.go
+model_seller.go
+model_seller_address.go
+model_seller_bank.go
+model_seller_input.go
+model_seller_input_registrations_inner.go
+model_seller_registrations_inner.go
 model_service_admission_identity.go
 model_service_admission_input.go
 model_set_backup_card_consent_200_response.go
@@ -642,6 +682,7 @@ model_subscription_pending_change.go
 model_subscription_standing.go
 model_subscription_terms.go
 model_subscription_terms_price.go
+model_suspend_organization_request.go
 model_sync_product_definitions_200_response.go
 model_sync_product_definitions_200_response_data_inner.go
 model_tax_return.go

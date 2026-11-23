@@ -73,6 +73,8 @@ type APIClient struct {
 
 	EnvironmentsAPI *EnvironmentsAPIService
 
+	ExperimentsAPI *ExperimentsAPIService
+
 	InvoicesAPI *InvoicesAPIService
 
 	LicenceDataAPI *LicenceDataAPIService
@@ -95,11 +97,17 @@ type APIClient struct {
 
 	PlansAPI *PlansAPIService
 
+	PricingTablesAPI *PricingTablesAPIService
+
 	ProductAccessAPI *ProductAccessAPIService
 
 	QuotesAPI *QuotesAPIService
 
+	RetentionAPI *RetentionAPIService
+
 	SeatsAPI *SeatsAPIService
+
+	SellersAPI *SellersAPIService
 
 	ServiceConnectionsAPI *ServiceConnectionsAPIService
 
@@ -142,6 +150,7 @@ func NewAPIClient(cfg *Configuration) *APIClient {
 	c.DunningAPI = (*DunningAPIService)(&c.common)
 	c.EnforcementAPI = (*EnforcementAPIService)(&c.common)
 	c.EnvironmentsAPI = (*EnvironmentsAPIService)(&c.common)
+	c.ExperimentsAPI = (*ExperimentsAPIService)(&c.common)
 	c.InvoicesAPI = (*InvoicesAPIService)(&c.common)
 	c.LicenceDataAPI = (*LicenceDataAPIService)(&c.common)
 	c.LicensesAPI = (*LicensesAPIService)(&c.common)
@@ -153,9 +162,12 @@ func NewAPIClient(cfg *Configuration) *APIClient {
 	c.PaymentIntentsAPI = (*PaymentIntentsAPIService)(&c.common)
 	c.PaymentMethodsAPI = (*PaymentMethodsAPIService)(&c.common)
 	c.PlansAPI = (*PlansAPIService)(&c.common)
+	c.PricingTablesAPI = (*PricingTablesAPIService)(&c.common)
 	c.ProductAccessAPI = (*ProductAccessAPIService)(&c.common)
 	c.QuotesAPI = (*QuotesAPIService)(&c.common)
+	c.RetentionAPI = (*RetentionAPIService)(&c.common)
 	c.SeatsAPI = (*SeatsAPIService)(&c.common)
+	c.SellersAPI = (*SellersAPIService)(&c.common)
 	c.ServiceConnectionsAPI = (*ServiceConnectionsAPIService)(&c.common)
 	c.SubscriptionsAPI = (*SubscriptionsAPIService)(&c.common)
 	c.TaxReturnsAPI = (*TaxReturnsAPIService)(&c.common)
