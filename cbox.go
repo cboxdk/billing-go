@@ -9,7 +9,7 @@ import (
 )
 
 // Version is this SDK's version, sent in the User-Agent.
-const Version = "0.2.0"
+const Version = "0.2.1"
 
 type settings struct {
 	cfg     *Configuration

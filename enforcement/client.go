@@ -484,7 +484,7 @@ func (c *Client) Can(ctx context.Context, org, meter string, n int64) (bool, err
 	if b, err := c.Balance(ctx, org, meter); err != nil || b >= n {
 		return err == nil, err
 	}
-	if _, err := c.refill(ctx, org, meter, n, false); err != nil {
+	if _, _, err := c.refill(ctx, org, meter, n, false, false); err != nil {
 		if isUnavailable(err) {
 			return c.outageAdmits(ctx, org, meter, n)
 		}
@@ -782,18 +782,20 @@ func (c *Client) hold(ctx context.Context, org, meter string, estimate int64) (H
 	if ok, err := c.take(ctx, org, meter, estimate); err != nil || ok {
 		return Hold{Meter: meter, Amount: estimate, Kind: HoldLease}, err
 	}
-	answer, err := c.refill(ctx, org, meter, estimate, false)
+	answer, held, err := c.refill(ctx, org, meter, estimate, false, true)
 	if err != nil {
 		if isUnavailable(err) {
 			return c.outageHold(ctx, org, meter, estimate, err)
 		}
 		return Hold{}, err
 	}
-	ok, err := c.take(ctx, org, meter, estimate)
-	if err != nil {
-		return Hold{}, err
+	if !held {
+		// Billing granted less than the estimate; the slice may still cover the rest.
+		if held, err = c.take(ctx, org, meter, estimate); err != nil {
+			return Hold{}, err
+		}
 	}
-	if ok {
+	if held {
 		return Hold{Meter: meter, Amount: estimate, Kind: HoldLease}, nil
 	}
 	reason := "quota_exhausted"
@@ -872,9 +874,13 @@ type leaseAnswer struct {
 
 // refill leases at least want units into the slice, single flight per (organization, meter). It
 // returns Billing's answer, or nil when another refill already filled the slice.
-func (c *Client) refill(ctx context.Context, org, meter string, want int64, probe bool) (*leaseAnswer, error) {
+//
+// With claim it also holds want for the caller, and reports whether it did: from the slice while
+// it holds the lock, or else straight from the grant, so no concurrent reservation can take them
+// between the refill and the caller's take (#427). It holds nothing when Billing granted less.
+func (c *Client) refill(ctx context.Context, org, meter string, want int64, probe, claim bool) (*leaseAnswer, bool, error) {
 	if err := c.guard(ctx, probe); err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	lock := c.key("lock", org, meter)
 	token := newID()
@@ -883,39 +889,45 @@ func (c *Client) refill(ctx context.Context, org, meter string, want int64, prob
 	for err == nil && !acquired && !probe && time.Now().Before(deadline) {
 		select {
 		case <-ctx.Done():
-			return nil, ctx.Err()
+			return nil, false, ctx.Err()
 		case <-time.After(25 * time.Millisecond):
 		}
 		acquired, err = c.store.Add(ctx, lock, token, c.lockTTL)
 	}
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	if !acquired {
 		if probe {
-			return nil, nil
+			return nil, false, nil
 		}
 		// Could not join the single flight in time: refill directly rather than starve.
 		if err := c.guard(ctx, probe); err != nil {
-			return nil, err
+			return nil, false, err
 		}
-		return c.lease(ctx, org, meter, want)
+		return c.lease(ctx, org, meter, want, claim)
 	}
 	defer func() {
 		if v, ok, _ := c.store.Get(ctx, lock); ok && v == token {
 			_, _ = c.store.Delete(ctx, lock)
 		}
 	}()
-	if b, err := c.Balance(ctx, org, meter); err != nil || b >= want {
-		return nil, err
+	if claim {
+		if ok, err := c.take(ctx, org, meter, want); err != nil || ok {
+			return nil, ok, err
+		}
+	} else if b, err := c.Balance(ctx, org, meter); err != nil || b >= want {
+		return nil, false, err
 	}
 	if err := c.guard(ctx, probe); err != nil {
-		return nil, err
+		return nil, false, err
 	}
-	return c.lease(ctx, org, meter, want)
+	return c.lease(ctx, org, meter, want, claim)
 }
 
-func (c *Client) lease(ctx context.Context, org, meter string, want int64) (*leaseAnswer, error) {
+// lease asks Billing for a slice and adds the grant to it. With claim, when the grant covers want,
+// it keeps want back for the caller and reports that it holds it.
+func (c *Client) lease(ctx context.Context, org, meter string, want int64, claim bool) (*leaseAnswer, bool, error) {
 	size := max(c.leaseSize, want)
 	body, err := c.transport.post(ctx, "/leases", map[string]any{"org": org, "meter": meter, "size": size}, c.leaseTimeout)
 	var answer *leaseAnswer
@@ -925,30 +937,47 @@ func (c *Client) lease(ctx context.Context, org, meter string, want int64) (*lea
 	if err != nil {
 		if isUnavailable(err) && c.breakerCooldown > 0 {
 			if perr := c.store.Put(ctx, c.key("breaker"), "1", c.breakerCooldown); perr != nil {
-				return nil, errors.Join(err, perr)
+				return nil, false, errors.Join(err, perr)
 			}
 		}
-		return nil, err
+		return nil, false, err
 	}
 	if _, err := c.store.Delete(ctx, c.key("breaker")); err != nil {
-		return nil, err
+		return nil, false, err
 	}
-	if answer.granted > 0 {
-		if _, err := c.store.Increment(ctx, c.key("lease", org, meter), answer.granted); err != nil {
-			return nil, err
+	held := claim && answer.granted >= want
+	credit := answer.granted
+	if held {
+		credit -= want
+	}
+	if credit > 0 {
+		if _, err := c.store.Increment(ctx, c.key("lease", org, meter), credit); err != nil {
+			return nil, false, err
 		}
 	}
+	err = c.afterLease(ctx, org, meter, size, answer.granted)
+	if err != nil && held {
+		// The caller gets the error, not a hold, so its units go to the slice after all.
+		if _, perr := c.store.Increment(ctx, c.key("lease", org, meter), want); perr != nil {
+			err = errors.Join(err, perr)
+		}
+		held = false
+	}
+	return answer, held, err
+}
+
+func (c *Client) afterLease(ctx context.Context, org, meter string, size, granted int64) error {
 	claimed, err := c.store.Add(ctx, c.key("claim", org), "1", c.snapshotRefresh)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	if claimed {
 		// Keep the previous snapshot when this read fails; the next interval reads again.
 		if _, err := c.fetchEntitlements(ctx, org); err != nil && !isBilling(err) {
-			return nil, err
+			return err
 		}
 	}
-	return answer, c.recordLease(ctx, org, meter, size, answer.granted)
+	return c.recordLease(ctx, org, meter, size, granted)
 }
 
 func (c *Client) refillIfLow(ctx context.Context, org, meter string) error {
@@ -959,13 +988,13 @@ func (c *Client) refillIfLow(ctx context.Context, org, meter string) error {
 	if c.backgroundRefill {
 		bg := context.WithoutCancel(ctx)
 		go func() {
-			if _, err := c.refill(bg, org, meter, c.refillThreshold+1, true); err != nil {
+			if _, _, err := c.refill(bg, org, meter, c.refillThreshold+1, true, false); err != nil {
 				c.onBackgroundError(err)
 			}
 		}()
 		return nil
 	}
-	if _, err := c.refill(ctx, org, meter, c.refillThreshold+1, false); err != nil && !isBilling(err) {
+	if _, _, err := c.refill(ctx, org, meter, c.refillThreshold+1, false, false); err != nil && !isBilling(err) {
 		return err
 	}
 	return nil

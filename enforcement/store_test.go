@@ -7,6 +7,7 @@ package enforcement_test
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -296,5 +297,110 @@ func TestConcurrentWorkersNeverOverdrawTheSlice(t *testing.T) {
 				t.Fatalf("the usage buffer holds %q; want %d", usage, granted)
 			}
 		})
+	}
+}
+
+// grantUpTo grants every lease in full until limit units are granted in all (0: no limit), then
+// what is left of it.
+type grantUpTo struct {
+	mu      sync.Mutex
+	limit   int64
+	granted int64
+	leases  int
+}
+
+func (g *grantUpTo) RoundTrip(req *http.Request) (*http.Response, error) {
+	body := `{"meters":{"api":{"enabled":true,"allowance":null,"overage":"block"}}}`
+	if strings.HasSuffix(req.URL.Path, "/leases") {
+		var lease struct{ Size int64 }
+		if err := json.NewDecoder(req.Body).Decode(&lease); err != nil {
+			return nil, err
+		}
+		g.mu.Lock()
+		n := lease.Size
+		if g.limit > 0 {
+			n = min(n, g.limit-g.granted)
+		}
+		g.granted += n
+		g.leases++
+		body = fmt.Sprintf(`{"lease_id":"lease_%d","granted":%d,"expires_at":null}`, g.leases, n)
+		g.mu.Unlock()
+	}
+	return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(body)), Header: http.Header{}, Request: req}, nil
+}
+
+// Two clients on one store, many workers reserving from one small slice: a reservation is refused
+// only when Billing has granted everything it had, never because another worker took the units a
+// refill had just leased (#427).
+func TestConcurrentReservationsAreRefusedOnlyWhenBillingIsSpent(t *testing.T) {
+	const workers, reservations, estimate = 32, 1600, 10
+	for name, open := range stores(t) {
+		for _, limit := range []int64{0, 5000} {
+			t.Run(fmt.Sprintf("%s/limit=%d", name, limit), func(t *testing.T) {
+				ctx := context.Background()
+				store, _ := open(t)
+				billing := &grantUpTo{limit: limit}
+				prefix := testPrefix(t)
+				clients := make([]*enforcement.Client, 2)
+				for i := range clients {
+					c, err := enforcement.New("cbt_test", base,
+						enforcement.WithStore(store),
+						enforcement.WithPrefix(prefix),
+						enforcement.WithHTTPClient(&http.Client{Transport: billing}),
+						enforcement.WithLeaseSize(20),
+						enforcement.WithBackgroundRefill(false),
+					)
+					if err != nil {
+						t.Fatal(err)
+					}
+					clients[i] = c
+				}
+
+				var next, committed, refused atomic.Int64
+				var wg sync.WaitGroup
+				errs := make(chan error, workers)
+				for w := 0; w < workers; w++ {
+					wg.Add(1)
+					go func(client *enforcement.Client) {
+						defer wg.Done()
+						for next.Add(1) <= reservations {
+							r, err := client.Reserve(ctx, "org_a", "api", estimate)
+							var q *enforcement.QuotaExceededError
+							if errors.As(err, &q) {
+								refused.Add(1)
+								continue
+							}
+							if err == nil {
+								err = client.Commit(ctx, r, enforcement.Units(estimate))
+							}
+							if err != nil {
+								errs <- err
+								return
+							}
+							committed.Add(estimate)
+						}
+					}(clients[w%2])
+				}
+				wg.Wait()
+				close(errs)
+				for err := range errs {
+					t.Fatal(err)
+				}
+
+				want := int64(reservations * estimate)
+				if limit > 0 {
+					want = limit
+				}
+				if got := committed.Load(); got != want {
+					t.Fatalf("committed %d units with %d reservations refused; want %d", got, refused.Load(), want)
+				}
+				if got, wantRefused := refused.Load(), int64(reservations)-want/estimate; got != wantRefused {
+					t.Fatalf("%d reservations refused; want %d", got, wantRefused)
+				}
+				if left, _ := clients[0].Balance(ctx, "org_a", "api"); left+want != billing.granted {
+					t.Fatalf("Billing granted %d; %d committed and %d left in the slice", billing.granted, want, left)
+				}
+			})
+		}
 	}
 }
